@@ -7,8 +7,8 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'pdf'];
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'application/pdf'];
 const DRAFT_KEY = 'rhvap_draft_v1';
-const SUBMIT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
-const MIN_FILL_TIME_MS = 20 * 1000; // 20 seconds
+const SUBMIT_COOLDOWN_MS = 5 * 60 * 1000;
+const MIN_FILL_TIME_MS = 20 * 1000;
 
 // ---------- Document definitions ----------
 const DOCUMENTS = [
@@ -22,23 +22,47 @@ const DOCUMENTS = [
   { id: 'docOtherDonor', label: 'अन्य दाताहरूबाट अनुदान लिएको वा लिन पहल भए नभएको स्वघोषणा', en: 'Self-declaration regarding other donor grants', required: true, checklist: 'ज' },
   { id: 'docSchedule', label: 'लगानी कार्यक्रमको कार्यान्वयन तालिका', en: 'Implementation schedule', required: true, checklist: 'झ' },
   { id: 'docOther', label: 'अन्य भए खुलाउने (वैकल्पिक, धेरै फाइल अनुमति)', en: 'Other documents (optional, multiple allowed)', required: false, checklist: 'ञ', multiple: true },
-  // Additional required documents from the notice not in the checklist but required
-  { id: 'docBusinessReg', label: 'व्यवसाय दर्ताको प्रमाणपत्र (अद्यावधिक)', en: 'Business/Firm/Company registration certificate (with renewal)', required: true },
+  { id: 'docBusinessReg', label: 'व्यवसाय दर्ताको प्रमाणपत्र (अद्यावधिक)', en: 'Business/Firm/Company registration certificate', required: true },
   { id: 'docVAT', label: 'प्यान वा भ्याट दर्ता प्रमाणपत्र', en: 'PAN/VAT certificate', required: true },
-  { id: 'docTaxClear', label: 'कर चुक्ता प्रमाणपत्र (पछिल्लो आर्थिक वर्ष)', en: 'Tax clearance certificate (latest FY; Window-3: last two years)', required: true },
+  { id: 'docTaxClear', label: 'कर चुक्ता प्रमाणपत्र (पछिल्लो आर्थिक वर्ष)', en: 'Tax clearance certificate', required: true },
   { id: 'docMoA', label: 'प्रबन्धपत्र र नियमावली (कम्पनीको हकमा)', en: 'MoA/AoA (for companies)', required: false },
-  { id: 'docLand', label: 'जग्गा धनी प्रमाणपूर्जा / भाडा सम्झौता', en: 'Land ownership proof / lease for infrastructure site', required: true },
+  { id: 'docLand', label: 'जग्गा धनी प्रमाणपूर्जा / भाडा सम्झौता', en: 'Land ownership proof / lease', required: true },
   { id: 'docNoDouble', label: 'दोहोरो सुविधा नलिएको स्व-घोषणा पत्र', en: 'Self-declaration of no double benefit', required: true },
-  { id: 'docNotBlacklisted', label: 'कालोसूचीमा नपरेको प्रमाण (CIB वा सरकारी निकाय)', en: 'Proof of not being blacklisted (CIB or government)', required: true },
-  { id: 'docCommitment', label: 'स्व-घोषणा वा प्रतिबद्धता पत्र (Commitment Letter)', en: 'Commitment letter for own share of cost', required: true },
+  { id: 'docNotBlacklisted', label: 'कालोसूचीमा नपरेको प्रमाण (CIB वा सरकारी निकाय)', en: 'Proof of not being blacklisted', required: true },
+  { id: 'docCommitment', label: 'स्व-घोषणा वा प्रतिबद्धता पत्र (Commitment Letter)', en: 'Commitment letter for own share', required: true },
 ];
 
-// ---------- State ----------
-let uploadedFiles = {}; // id -> array of { file, name, size, type }
+let uploadedFiles = {};
 let formStartTime = Date.now();
 
-// ---------- Language toggle ----------
+/* ============ NEPALI (B.S.) DATE PICKER ============ */
+function initNepaliDatePickers() {
+  if (typeof NepaliDatePicker === 'undefined') {
+    console.warn('Nepali date picker not loaded. Date fields fall back to text input.');
+    return;
+  }
+  document.querySelectorAll('[data-np-date]').forEach(el => {
+    try {
+      new NepaliDatePicker('#' + el.id, {
+        format: 'YYYY/MM/DD',
+        inline: false,
+        maxYear: 2090,
+        minYear: 2070,
+        closeOnSelect: true,
+      });
+      el.setAttribute('autocomplete', 'off');
+      el.setAttribute('inputmode', 'numeric');
+    } catch (e) {
+      console.warn('Date picker init failed for #' + el.id, e);
+    }
+  });
+}
+
+/* ============ LANGUAGE ============ */
 function setLanguage(lang) {
+  document.body.classList.remove('lang-ne', 'lang-en');
+  document.body.classList.add(lang === 'en' ? 'lang-en' : 'lang-ne');
+
   document.querySelectorAll('[data-en]').forEach(el => {
     const en = el.getAttribute('data-en');
     if (!el.dataset.ne) el.dataset.ne = el.textContent;
@@ -52,19 +76,23 @@ function setLanguage(lang) {
   localStorage.setItem('rhvap_lang', lang);
 }
 
-// ---------- Draft ----------
+/* ============ DRAFT ============ */
 function saveDraft() {
   const form = document.getElementById('applicationForm');
+  if (!form) return;
   const data = {};
   new FormData(form).forEach((v, k) => {
     if (v instanceof File) return;
     data[k] = v;
   });
   data._uploadedIds = Object.keys(uploadedFiles);
+  data._activities = Array.from(document.querySelectorAll('.activity-input')).map(i => i.value);
   localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
   const status = document.getElementById('draftStatus');
-  status.textContent = '✓ ड्राफ्ट सुरक्षित भयो / Draft saved';
-  setTimeout(() => status.textContent = '', 2500);
+  if (status) {
+    status.textContent = '✓ ड्राफ्ट सुरक्षित भयो / Draft saved';
+    setTimeout(() => status.textContent = '', 2500);
+  }
 }
 
 function loadDraft() {
@@ -73,16 +101,21 @@ function loadDraft() {
   try {
     const data = JSON.parse(raw);
     Object.keys(data).forEach(k => {
+      if (k.startsWith('_')) return;
       const el = document.getElementById(k);
-      if (el && k !== '_uploadedIds') {
+      if (el) {
         if (el.type === 'checkbox') el.checked = !!data[k];
         else el.value = data[k];
       }
     });
+    if (Array.isArray(data._activities)) {
+      const inputs = document.querySelectorAll('.activity-input');
+      data._activities.forEach((v, i) => { if (inputs[i]) inputs[i].value = v; });
+    }
   } catch (e) { /* ignore */ }
 }
 
-// ---------- File handling ----------
+/* ============ FILE HANDLING ============ */
 function validateFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (!ALLOWED_EXT.includes(ext)) {
@@ -169,7 +202,7 @@ function buildUploadFields() {
   });
 }
 
-// ---------- Checklist ----------
+/* ============ CHECKLIST ============ */
 function buildChecklist() {
   const grid = document.getElementById('checklistGrid');
   if (!grid) return;
@@ -180,25 +213,17 @@ function buildChecklist() {
     label.innerHTML = `<input type="checkbox" data-doc="${doc.id}"> <span>${doc.checklist}. ${doc.label}</span>`;
     grid.appendChild(label);
   });
-  // Sync checkbox with upload presence
-  grid.addEventListener('change', e => {
-    if (e.target.matches('input[type=checkbox]')) {
-      const docId = e.target.dataset.doc;
-      if (e.target.checked && (!uploadedFiles[docId] || !uploadedFiles[docId].length)) {
-        // just a visual tick; upload still required
-      }
-    }
-  });
 }
 
-// ---------- Investment table ----------
+/* ============ INVESTMENT TABLE ============ */
 function addInvestmentRow() {
   const tbody = document.getElementById('investmentBody');
+  if (!tbody) return;
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td class="sn"></td>
-    <td><input type="text" class="inv-activity" data-en-placeholder="Activity"></td>
-    <td><input type="text" class="inv-unit" data-en-placeholder="Unit"></td>
+    <td><input type="text" class="inv-activity"></td>
+    <td><input type="text" class="inv-unit"></td>
     <td><input type="text" class="inv-qty" inputmode="decimal"></td>
     <td><input type="text" class="inv-rate" inputmode="decimal"></td>
     <td><input type="text" class="inv-total" readonly></td>
@@ -226,8 +251,8 @@ function attachRowEvents(tr) {
   const rhvap = tr.querySelector('.inv-rhvap');
 
   function calcTotal() {
-    const q = parseFloat(qty.value) || 0;
-    const r = parseFloat(rate.value) || 0;
+    const q = parseFloat(toEnglishDigits(qty.value)) || 0;
+    const r = parseFloat(toEnglishDigits(rate.value)) || 0;
     total.value = (q * r).toFixed(2);
     updateTotals();
   }
@@ -243,12 +268,17 @@ function attachRowEvents(tr) {
   });
 }
 
+function toEnglishDigits(s) {
+  const map = { '०':'0','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6','७':'7','८':'8','९':'9' };
+  return String(s).replace(/[०-९]/g, d => map[d]);
+}
+
 function updateTotals() {
   let totalCost = 0, totalMSME = 0, totalRHVAP = 0;
   document.querySelectorAll('#investmentBody tr').forEach(tr => {
-    totalCost += parseFloat(tr.querySelector('.inv-total').value) || 0;
-    totalMSME += parseFloat(tr.querySelector('.inv-msme').value) || 0;
-    totalRHVAP += parseFloat(tr.querySelector('.inv-rhvap').value) || 0;
+    totalCost += parseFloat(toEnglishDigits(tr.querySelector('.inv-total').value)) || 0;
+    totalMSME += parseFloat(toEnglishDigits(tr.querySelector('.inv-msme').value)) || 0;
+    totalRHVAP += parseFloat(toEnglishDigits(tr.querySelector('.inv-rhvap').value)) || 0;
   });
   document.getElementById('totalCost').textContent = totalCost.toFixed(2);
   document.getElementById('totalMSME').textContent = totalMSME.toFixed(2);
@@ -269,12 +299,12 @@ function updateTotals() {
   }
 }
 
-// ---------- Validation ----------
+/* ============ VALIDATION ============ */
 function validateForm() {
   const errors = [];
   const form = document.getElementById('applicationForm');
+  if (!form) return errors;
 
-  // Required fields
   form.querySelectorAll('[required]').forEach(el => {
     if (el.type === 'checkbox' && !el.checked) {
       errors.push('कृपया सहमति जनाउनुहोस्। / Please agree to the declaration.');
@@ -284,56 +314,44 @@ function validateForm() {
     }
   });
 
-  // PAN 9 digits
-  const pan = document.getElementById('pan').value.trim();
-  if (pan && !/^\d{9}$/.test(pan)) {
+  const pan = document.getElementById('pan')?.value.trim() || '';
+  if (pan && !/^\d{9}$/.test(toEnglishDigits(pan))) {
     errors.push('PAN ९ अंकको हुनुपर्छ। / PAN must be 9 digits.');
   }
 
-  // Phone
-  const phone = document.getElementById('phone').value.trim();
-  if (phone && !/^(97|98)\d{8}$/.test(phone) && !/^0\d{1,2}\d{6,7}$/.test(phone)) {
+  const phone = document.getElementById('phone')?.value.trim() || '';
+  if (phone && !/^(97|98)\d{8}$/.test(toEnglishDigits(phone)) && !/^0\d{1,2}\d{6,7}$/.test(toEnglishDigits(phone))) {
     errors.push('मान्य नेपाली मोबाइल वा ल्यान्डलाइन नम्बर भर्नुहोस्। / Enter a valid Nepali mobile or landline number.');
   }
 
-  // Email
-  const email = document.getElementById('email').value.trim();
+  const email = document.getElementById('email')?.value.trim() || '';
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.push('मान्य इमेल ठेगाना भर्नुहोस्। / Enter a valid email address.');
   }
 
-  // Required files
   DOCUMENTS.filter(d => d.required).forEach(d => {
     if (!uploadedFiles[d.id] || !uploadedFiles[d.id].length) {
       errors.push(`कृपया ${d.label} अपलोड गर्नुहोस्। / Please upload ${d.en}`);
     }
   });
 
-  // Honeypot
-  if (document.getElementById('website').value) {
-    errors.push('Bot detected.');
-  }
+  const hp = document.getElementById('website');
+  if (hp && hp.value) errors.push('Bot detected.');
 
-  // Time check
-  const elapsed = Date.now() - formStartTime;
-  if (elapsed < MIN_FILL_TIME_MS) {
+  if (Date.now() - formStartTime < MIN_FILL_TIME_MS) {
     errors.push('कृपया फारम भर्न समय लिनुहोस्। / Please take your time to fill the form.');
   }
 
-  // Repeat submission check
   const lastSubmit = localStorage.getItem('rhvap_last_submit');
-  if (lastSubmit) {
-    const diff = Date.now() - parseInt(lastSubmit, 10);
-    if (diff < SUBMIT_COOLDOWN_MS) {
-      errors.push('तपाईंले भर्खरै आवेदन पेश गर्नुभएको छ। कृपया केही समय पर्खनुहोस्। / You recently submitted. Please wait a few minutes.');
-    }
+  if (lastSubmit && (Date.now() - parseInt(lastSubmit, 10)) < SUBMIT_COOLDOWN_MS) {
+    errors.push('तपाईंले भर्खरै आवेदन पेश गर्नुभएको छ। कृपया केही समय पर्खनुहोस्। / You recently submitted. Please wait a few minutes.');
   }
 
   return errors;
 }
 
-// ---------- Submission ----------
-async function fileToBase64(file) {
+/* ============ SUBMISSION ============ */
+function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -350,11 +368,9 @@ async function collectFormData() {
     data[k] = v;
   });
 
-  // Activity list
   data.activities = Array.from(document.querySelectorAll('.activity-input'))
     .map(i => i.value.trim()).filter(Boolean);
 
-  // Investment rows
   data.investmentRows = [];
   document.querySelectorAll('#investmentBody tr').forEach(tr => {
     data.investmentRows.push({
@@ -370,7 +386,6 @@ async function collectFormData() {
     });
   });
 
-  // Files as base64
   data.files = {};
   for (const [docId, arr] of Object.entries(uploadedFiles)) {
     if (!arr.length) continue;
@@ -378,10 +393,7 @@ async function collectFormData() {
     for (const item of arr) {
       const b64 = await fileToBase64(item.file);
       data.files[docId].push({
-        name: item.name,
-        size: item.size,
-        type: item.type,
-        data: b64,
+        name: item.name, size: item.size, type: item.type, data: b64,
       });
     }
   }
@@ -399,6 +411,12 @@ async function submitForm(e) {
     errorBox.innerHTML = errors.map(err => `<div>• ${err}</div>`).join('');
     errorBox.hidden = false;
     errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  if (typeof APPS_SCRIPT_URL === 'undefined' || APPS_SCRIPT_URL.includes('PASTE_YOUR')) {
+    errorBox.textContent = '❌ कन्फिगरेसन त्रुटि: config.js मा Apps Script URL राख्नुहोस्। / Config error: Add Apps Script URL in config.js.';
+    errorBox.hidden = false;
     return;
   }
 
@@ -422,17 +440,17 @@ async function submitForm(e) {
     const result = await res.json();
     if (!result.success) throw new Error(result.message || 'Submission failed');
 
-    // Show success
     localStorage.setItem('rhvap_last_submit', Date.now().toString());
     document.getElementById('applicationForm').hidden = true;
-    document.querySelector('.form-actions-top').hidden = true;
-    document.getElementById('progressBar').style.width = '100%';
+    const topActions = document.querySelector('.form-actions-top');
+    if (topActions) topActions.hidden = true;
+    const pb = document.getElementById('progressBar');
+    if (pb) pb.style.width = '100%';
 
     const success = document.getElementById('successView');
     success.hidden = false;
     document.getElementById('refNumberDisplay').textContent = result.referenceNumber;
 
-    // Summary
     const summary = document.getElementById('summaryDisplay');
     summary.innerHTML = `
       <dl>
@@ -460,54 +478,83 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// ---------- Init ----------
+/* ============ INIT ============ */
 document.addEventListener('DOMContentLoaded', () => {
   formStartTime = Date.now();
-  document.getElementById('formStartTime').value = formStartTime;
+  const fst = document.getElementById('formStartTime');
+  if (fst) fst.value = formStartTime;
 
-  // Language
+  // Language init
   const savedLang = localStorage.getItem('rhvap_lang') || 'ne';
-  document.getElementById('langBtn').addEventListener('click', () => {
-    const current = localStorage.getItem('rhvap_lang') || 'ne';
-    const next = current === 'ne' ? 'en' : 'ne';
-    localStorage.setItem('rhvap_lang', next);
-    setLanguage(next);
-    document.getElementById('langBtn').textContent = next === 'ne' ? 'English' : 'नेपाली';
-  });
-  setLanguage(savedLang);
-  document.getElementById('langBtn').textContent = savedLang === 'ne' ? 'English' : 'नेपाली';
+  document.body.classList.remove('lang-ne', 'lang-en');
+  document.body.classList.add(savedLang === 'en' ? 'lang-en' : 'lang-ne');
 
-  // Build UI
-  buildChecklist();
-  buildUploadFields();
-  addInvestmentRow();
-  addInvestmentRow();
-  addInvestmentRow();
-
-  // Events
-  document.getElementById('addRowBtn').addEventListener('click', addInvestmentRow);
-  document.getElementById('saveDraftBtn').addEventListener('click', saveDraft);
-  document.getElementById('applicationForm').addEventListener('submit', submitForm);
-  document.getElementById('retryBtn').addEventListener('click', () => {
-    document.getElementById('retryBtn').hidden = true;
-    document.getElementById('applicationForm').requestSubmit();
-  });
-
-  // Load draft
-  loadDraft();
-
-  // Progress bar
-  const form = document.getElementById('applicationForm');
-  form.addEventListener('input', () => {
-    const inputs = form.querySelectorAll('input, select, textarea');
-    let filled = 0;
-    inputs.forEach(i => {
-      if (i.type === 'checkbox' ? i.checked : i.value.trim()) filled++;
+  const langBtn = document.getElementById('langBtn');
+  if (langBtn) {
+    langBtn.addEventListener('click', () => {
+      const current = localStorage.getItem('rhvap_lang') || 'ne';
+      const next = current === 'ne' ? 'en' : 'ne';
+      localStorage.setItem('rhvap_lang', next);
+      setLanguage(next);
+      langBtn.textContent = next === 'ne' ? 'English' : 'नेपाली';
     });
-    const pct = Math.min(100, (filled / inputs.length) * 100);
-    document.getElementById('progressBar').style.width = pct + '%';
-  });
+    setLanguage(savedLang);
+    langBtn.textContent = savedLang === 'ne' ? 'English' : 'नेपाली';
+  }
 
-  // Auto-save every 30 seconds
-  setInterval(saveDraft, 30000);
+  // Build UI on apply page
+  if (document.getElementById('applicationForm')) {
+    buildChecklist();
+    buildUploadFields();
+    addInvestmentRow();
+    addInvestmentRow();
+    addInvestmentRow();
+
+    const addRowBtn = document.getElementById('addRowBtn');
+    if (addRowBtn) addRowBtn.addEventListener('click', addInvestmentRow);
+
+    const saveDraftBtn = document.getElementById('saveDraftBtn');
+    if (saveDraftBtn) saveDraftBtn.addEventListener('click', saveDraft);
+
+    const form = document.getElementById('applicationForm');
+    form.addEventListener('submit', submitForm);
+
+    const retryBtn = document.getElementById('retryBtn');
+    if (retryBtn) retryBtn.addEventListener('click', () => {
+      retryBtn.hidden = true;
+      form.requestSubmit();
+    });
+
+    // Progress bar
+    form.addEventListener('input', () => {
+      const inputs = form.querySelectorAll('input, select, textarea');
+      let filled = 0;
+      inputs.forEach(i => {
+        if (i.type === 'checkbox' ? i.checked : i.value.trim()) filled++;
+      });
+      const pct = Math.min(100, (filled / inputs.length) * 100);
+      const pb = document.getElementById('progressBar');
+      if (pb) pb.style.width = pct + '%';
+    });
+
+    // Add activity button
+    const addActivityBtn = document.getElementById('addActivityBtn');
+    if (addActivityBtn) addActivityBtn.addEventListener('click', () => {
+      const container = document.getElementById('activityList');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'activity-input';
+      input.placeholder = 'Activity ' + (container.children.length + 1);
+      container.appendChild(input);
+    });
+
+    // Load draft
+    loadDraft();
+
+    // B.S. date pickers
+    initNepaliDatePickers();
+
+    // Auto-save every 30 seconds
+    setInterval(saveDraft, 30000);
+  }
 });
