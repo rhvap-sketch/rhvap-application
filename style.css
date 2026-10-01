@@ -14,7 +14,7 @@
   --warning-border: #f0c040;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0,0,0,.08);
-  --font: 'kalimati', 'Noto Sans Devanagari', Arial, sans-serif;
+  --font: 'kalimati',  Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
