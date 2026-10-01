@@ -1,0 +1,217 @@
+/* ============================================================
+   FONT SETUP — Kalimati (Nepali) + Times New Roman (English)
+   ============================================================ */
+
+/* Kalimati via CDN + local fallback */
+@font-face {
+  font-family: 'Kalimati';
+  src: local('Kalimati'),
+       local('Kalimati Regular'),
+       url('Kalimati.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Default (Nepali) — Kalimati */
+body.lang-ne,
+body:not([class*="lang-"]) {
+  font-family: 'Kalimati', 'Noto Sans Devanagari', Arial, sans-serif;
+}
+
+/* English mode — Times New Roman */
+body.lang-en,
+body.lang-en .t1,
+body.lang-en .t2,
+body.lang-en .t3,
+body.lang-en .notice-title,
+body.lang-en h1,
+body.lang-en h2,
+body.lang-en h3,
+body.lang-en p,
+body.lang-en li,
+body.lang-en td,
+body.lang-en th,
+body.lang-en label,
+body.lang-en input,
+body.lang-en select,
+body.lang-en textarea,
+body.lang-en button,
+body.lang-en a {
+  font-family: 'Times New Roman', Times, serif !important;
+}
+
+/* English sub-headings always in Times New Roman */
+.en-sub,
+.en,
+.en-text,
+.landing-card .en {
+  font-family: 'Times New Roman', Times, serif;
+}
+
+/* ============================================================
+   LANDING PAGE
+   ============================================================ */
+
+.landing-hero {
+  text-align: center;
+  padding: 30px 16px 10px;
+}
+.landing-hero h1 {
+  color: var(--crimson);
+  font-size: 30px;
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+.landing-hero p {
+  color: var(--text-muted);
+  font-size: 18px;
+  margin: 0;
+}
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  margin: 28px 0 50px;
+}
+
+.landing-card {
+  display: block;
+  background: #fff;
+  border: 2px solid var(--grey-border);
+  border-radius: 14px;
+  padding: 32px 22px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.landing-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 24px rgba(0,0,0,.14);
+  border-color: var(--crimson);
+  text-decoration: none;
+}
+.landing-card .icon {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+.landing-card h2 {
+  color: var(--crimson);
+  font-size: 24px;
+  margin: 0 0 6px;
+  border: none;
+  padding: 0;
+}
+.landing-card .en {
+  color: var(--blue);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+.landing-card .desc {
+  color: var(--text-muted);
+  font-size: 15px;
+  margin: 0;
+  line-height: 1.5;
+}
+.landing-card.primary {
+  border-color: var(--crimson);
+  background: linear-gradient(180deg, #fff 0%, #fff5f7 100%);
+}
+
+/* ============================================================
+   PREVIEW PAGES (notice.html / form.html)
+   ============================================================ */
+
+.preview-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--grey-light);
+  border: 1px solid var(--grey-border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 18px 0;
+}
+.preview-bar .title {
+  font-weight: 700;
+  color: var(--blue);
+  font-size: 17px;
+}
+.preview-bar .btn { margin-left: 6px; }
+
+/* Form preview specific */
+.form-preview .center { text-align: center; }
+.form-preview .right { text-align: right; }
+.form-preview .small { font-size: 14px; }
+.form-preview h1.center { font-size: 20px; color: var(--crimson); line-height: 1.5; }
+.form-preview h2 {
+  color: var(--blue);
+  border-bottom: 1px solid var(--crimson);
+  font-size: 17px;
+  padding-bottom: 6px;
+  margin-top: 22px;
+}
+.form-preview .tbl th {
+  background: var(--grey-light);
+  color: var(--text);
+  font-weight: 600;
+  width: 35%;
+  text-align: left;
+}
+.form-preview .checklist-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 20px;
+  margin: 12px 0;
+  font-size: 15px;
+}
+.form-preview .blank-box {
+  min-height: 90px;
+  border: 1px dashed var(--grey-border);
+  border-radius: var(--radius);
+  background: #fafafa;
+  margin: 8px 0;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 800px) {
+  .landing-grid { grid-template-columns: 1fr; gap: 16px; }
+  .landing-hero h1 { font-size: 22px; }
+  .landing-card { padding: 22px 16px; }
+  .landing-card .icon { font-size: 42px; }
+  .form-preview .checklist-preview { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   PRINT — hide buttons and chrome
+   ============================================================ */
+@media print {
+  .preview-bar,
+  .site-header,
+  .site-footer,
+  .mainnav,
+  .topbar,
+  .btn,
+  .skip {
+    display: none !important;
+  }
+  body { background: #fff; font-size: 11pt; }
+  .card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+  }
+  .card h2 { page-break-after: avoid; }
+  .tbl { page-break-inside: auto; }
+  .tbl tr { page-break-inside: avoid; }
+}
