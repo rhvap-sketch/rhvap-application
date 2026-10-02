@@ -11,7 +11,9 @@ const SUBMIT_COOLDOWN_MS = 5 * 60 * 1000;
 const MIN_FILL_TIME_MS = 20 * 1000;
 
 // ---------- Document definitions ----------
+// NOTE: docAnnex11 is the NEW entry added at the top (अनुसूची १.१ upload)
 const DOCUMENTS = [
+  { id: 'docAnnex11', label: 'अनुसूची १.१ आवेदन फारम (हस्ताक्षर/छाप सहित)', en: 'Annex 1.1 Application Form (signed & stamped)', required: true },
   { id: 'docCitizenship', label: 'नागरिकता/राष्ट्रिय परिचयपत्रको प्रतिलिपि', en: 'Copy of Citizenship/National ID', required: true, checklist: 'क' },
   { id: 'docRegCert', label: 'संस्था दर्ता प्रमाणपत्र तथा नविकरणको प्रतिलिपि', en: 'Organization registration certificate and renewal copy', required: true, checklist: 'ख' },
   { id: 'docPAN', label: 'स्थायी लेखा नम्बर तथा कर चुक्ता पत्र', en: 'PAN and Tax Clearance Certificate', required: true, checklist: 'ग' },
@@ -47,7 +49,7 @@ function initNepaliDatePickers() {
         format: 'YYYY/MM/DD',
         inline: false,
         maxYear: 2090,
-        minYear: 2070,
+        minYear: 2020,
         closeOnSelect: true,
       });
       el.setAttribute('autocomplete', 'off');
